@@ -1,9 +1,11 @@
 module Main where
 
-import Prelude hiding (null)
-import Control.Monad (void, liftM, when)
+import Control.Monad (void, liftM, when, forM_)
+import System.Environment (getArgs, getProgName)
 import Data.Functor.Identity (Identity)
 import Data.List (intersperse)
+import Prelude hiding (null)
+import System.Console.GetOpt
 import Text.Parsec hiding (string)
 import Text.Parsec.Language (javaStyle)
 import qualified Text.Parsec.Token as T
@@ -98,12 +100,41 @@ object =
                    return $ do k'<- stringLiteral
                                if k' /= k then unexpected (show k) <?> show k'
                                else void (symbol ":" >> v)
-    jsonObject = void . braces . sequence_ . intersperse (void (symbol ","))
+    jsonObject = void . braces . sequence_ . intersperse (void $ symbol ",")
+
+-- | The command line option type
+data CmdOption = OptHelp | OptArchetypeFile FilePath
+
+-- | get, from command line arguments, the archetype file path and the list of
+--   json file names to validate
+getArchetypeAndInputs :: IO (Maybe (FilePath, [FilePath]))
+getArchetypeAndInputs =
+    do args <- getArgs
+       let (options, inputFiles, errors) = getOpt Permute optDescriptions args
+       mapM_ putStrLn errors
+       case options of
+        (OptArchetypeFile s:_) -> return $ Just (s, inputFiles)
+        _ -> do progName <- getProgName
+                putStrLn $ usageInfo ("Usage: " ++ progName ++ " <options> [file [file ...]]") optDescriptions
+                return Nothing
+  where
+    optDescriptions = [Option "h" ["help"] (NoArg OptHelp) "Display help information",
+                       Option "a" ["archetype"] (ReqArg OptArchetypeFile "FILENAME") "The JSON archetype file name"]
 
 main :: IO ()
-main = do a <- readFile "archetype.json"
-          case  parse json "archetype.json" a of
-            Left e -> print e
-            Right p -> do s <- getContents
-                          parseTest p s
+main =
+    do maybeOptions <- getArchetypeAndInputs
+       case maybeOptions of
+        Nothing -> return ()
+        Just (archetype, inputs) -> do contents <- readFile archetype
+                                       case parse json archetype contents of
+                                         Left e -> print e
+                                         Right p -> validateFiles p inputs
+  where
+    validateFiles  parser [] = getContents >>= validateSource parser "input"
+    validateFiles  parser inputs = forM_ inputs $ \f -> readFile f >>= validateSource parser f
+    validateSource parser name contents = case parse parser name contents of
+                                            Left e -> print e
+                                            Right _ -> putStrLn $ name ++ ": success"
+
 
