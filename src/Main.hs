@@ -99,7 +99,7 @@ object =
                    v <- value
                    return $ do k'<- stringLiteral
                                if k' /= k then unexpected (show k) <?> show k'
-                               else void (symbol ":" >> v)
+                                else void (symbol ":" >> v)
     jsonObject = void . braces . sequence_ . intersperse (void $ symbol ",")
 
 -- | The command line option type
