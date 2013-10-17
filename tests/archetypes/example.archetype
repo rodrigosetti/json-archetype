@@ -3,9 +3,9 @@
  * comments (block or line) to help documenting your test.
  */
 
-/* one case assign sub-structes to names, and use them later in the main
-   validation structure to reuse parts. This is also an example of a
-   non-trivial use of a regular expression to validate an IP address. */
+/* one can assign values to names, and use them later to reuse parts.
+   This is also an example of a non-trivial use of a regular expression
+   to validate an IP address. */
 ip_address =  "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}"
 server = { "ip": ip_address,
            "port": 8080,
