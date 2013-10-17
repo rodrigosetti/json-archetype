@@ -45,7 +45,7 @@ Take, for example, the following JSON archetype:
         "data(-.*)?": object,  // this key is a regular expression
         "is_member" : boolean, // true or false (type restriction)
         "is_active" : true,    // only true (value restriction)
-        "coordinates": [number, number, number], // any array with three numbers
+        "coordinates": ["geo", number, number, number], // any array with "geo" and 3 numbers
         "stream": array,
 
         // reusing pre-defined structures...
@@ -63,7 +63,26 @@ key identifiers). Actually every string and key matching is a regular
 expression matching, so please be mindful of special characters and proper
 escaping.
 
-The order matters in arrays, but it doesn't in objects.
+For the given archetype, the following JSON is an example of a valid one (note
+that order matters in arrays, but it doesn't in objects):
+
+    {
+        "version": 2,
+        "is_member" : false,
+        "name": "John Smith",
+        "is_active" : true,
+        "stream": [7, 7, 7, 10, 22, 12, 2, 8],
+        "coordinates": ["geo", 3123, 133, 319],
+
+        "dev_server"   : {"ip": "127.0.0.1", "port": 8080, "protocol": "http"},
+        "stage_server" : {"ip": "200.6.5.1", "port": 8080, "protocol": "http"},
+        "prod_server"  : {"ip": "192.178.1.1", "port": 8080, "protocol": "http"},
+
+        "data-color": {"red": 10, "green": 20, "blue": 6},
+        "extra": {"foo": "bar",
+                  "bar": null}
+    }
+
 
 ## TODO
 

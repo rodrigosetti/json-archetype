@@ -1,0 +1,17 @@
+{
+    "version": 2,
+    "is_member" : false,
+    "name": "John Smith",
+    "is_active" : true,
+    "stream": [7, 7, 7, 10, 22, 12, 2, 8],
+    "coordinates": ["geo", 3123, 133, 319],
+
+    "dev_server"   : {"ip": "127.0.0.1", "port": 8080, "protocol": "http"},
+    "stage_server" : {"ip": "200.6.5.1", "port": 8080, "protocol": "http"},
+    "prod_server"  : {"ip": "192.178.1.1", "port": 8080, "protocol": "http"},
+
+    "data-color": {"red": 10, "green": 20, "blue": 6},
+    "extra": {"foo": "bar",
+              "bar": null}
+}
+
