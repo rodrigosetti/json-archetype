@@ -13,34 +13,66 @@ import qualified Data.Map as M
 
 -- The JSON (Java style) lexer
 lexer :: T.GenTokenParser String u Identity
-lexer = T.makeTokenParser javaStyle
+lexer = T.makeTokenParser javaStyle { T.reservedNames = ["string",
+                                                         "number",
+                                                         "object",
+                                                         "array",
+                                                         "boolean",
+                                                         "any",
+                                                         "true",
+                                                         "false",
+                                                         "null"] }
 
 braces         :: Parsec String u a -> Parsec String u a
 brackets       :: Parsec String u a -> Parsec String u a
-symbol         :: String -> Parsec String u String
+commaSep       :: Parsec String u a -> Parsec String u [a]
 float          :: Parsec String u Double
 integer        :: Parsec String u Integer
-commaSep       :: Parsec String u a -> Parsec String u [a]
-stringLiteral  :: Parsec String u String
 naturalOrFloat :: Parsec String u (Either Integer Double)
+reserved       :: String -> Parsec String u String
+stringLiteral  :: Parsec String u String
+symbol         :: String -> Parsec String u String
 
 braces         = T.braces         lexer
 brackets       = T.brackets       lexer
-symbol         = T.symbol         lexer
+commaSep       = T.commaSep       lexer
 float          = T.float          lexer
 integer        = T.integer        lexer
-commaSep       = T.commaSep       lexer
-stringLiteral  = T.stringLiteral  lexer
 naturalOrFloat = T.naturalOrFloat lexer
+reserved       = T.symbol         lexer
+stringLiteral  = T.stringLiteral  lexer
+symbol         = T.symbol         lexer
 
-type ArchetypeParser = Parsec String () JSONParser
+-- | Basic JSON validator: parses a JSON and returns unit, so we're interested
+--   only in validation (i.e. whether or not the input is correct).
+type JSONValidator = Parsec String () ()
 
-type JSONParser = Parsec String () ()
+jsonValue :: JSONValidator
+jsonValue = jsonArray        <|>
+            jsonObject       <|>
+            void (reserved "true")  <|>
+            void (reserved "false") <|>
+            void (reserved "null")  <|>
+            void stringLiteral    <|>
+            void naturalOrFloat
 
-json :: ArchetypeParser
-json =
+jsonObject :: JSONValidator
+jsonObject =
+    void $ braces $ commaSep pair
+  where
+    pair = stringLiteral >> symbol ":" >> jsonValue
+
+jsonArray :: JSONValidator
+jsonArray = void $ brackets $ commaSep jsonValue
+
+-- | The Archetype Parser parses archetype JSON (the augmented JSON) and returns
+--   a JSON validator
+type ArchetypeParser = Parsec String () JSONValidator
+
+archetype :: ArchetypeParser
+archetype =
     do spaces
-       o <- object
+       o <- object <|> typeObject
        eof
        return $ jsonDocument o
   where
@@ -51,22 +83,37 @@ value = object       <|>
         list         <|>
         string       <|>
         number       <|>
-        boolean      <|>
-        null
+        word "true"  <|>
+        word "false" <|>
+        word "null"  <|>
+        typeString   <|>
+        typeNumber   <|>
+        typeObject   <|>
+        typeArray    <|>
+        typeBoolean  <|>
+        typeAny
 
-null :: ArchetypeParser
-null =
-    symbol "null" >> return jsonNull
-  where
-    jsonNull = void $ symbol "null"
+typeString :: ArchetypeParser
+typeString = try (reserved "string") >> return (void stringLiteral)
 
-boolean :: ArchetypeParser
-boolean =
-    true <|> false
-  where
-    true = symbol "true" >> return (jsonSymbol "true")
-    false = symbol "false" >> return (jsonSymbol "false")
-    jsonSymbol = void . symbol
+typeNumber :: ArchetypeParser
+typeNumber = try (reserved "number") >> return (void naturalOrFloat)
+
+typeBoolean :: ArchetypeParser
+typeBoolean = try (reserved "boolean") >>
+              return (void $ reserved "true" <|> reserved "false")
+
+typeArray :: ArchetypeParser
+typeArray = try (reserved "array") >> return jsonArray
+
+typeObject :: ArchetypeParser
+typeObject = try (reserved "object") >> return jsonObject
+
+typeAny :: ArchetypeParser
+typeAny = try (reserved "any") >> return jsonValue
+
+word :: String -> ArchetypeParser
+word w = try (reserved w) >> return (void $ reserved w)
 
 number :: ArchetypeParser
 number =
@@ -93,13 +140,12 @@ list =
 object :: ArchetypeParser
 object =
     do pairs <- braces (commaSep parsePair)
-       return $ jsonObject $ M.fromList pairs
+       return (void $ symbol "{" >> jsonPairs (M.fromList pairs))
   where
     parsePair = do k <- stringLiteral
                    _ <- symbol ":"
                    v <- value
                    return (k, v)
-    jsonObject pairs = symbol "{" >> jsonPairs pairs
     jsonPairs pairs
         | M.null pairs = void $ symbol "}"
         | otherwise = do k <- stringLiteral
@@ -135,10 +181,10 @@ main =
     do maybeOptions <- getArchetypeAndInputs
        case maybeOptions of
         Nothing -> return ()
-        Just (archetype, inputs) -> do contents <- readFile archetype
-                                       case parse json archetype contents of
-                                         Left e -> print e
-                                         Right p -> validateFiles p inputs
+        Just (archetypeFile, inputs) -> do contents <- readFile archetypeFile
+                                           case parse archetype archetypeFile contents of
+                                             Left e -> print e
+                                             Right p -> validateFiles p inputs
   where
     validateFiles  parser [] = getContents >>= validateSource parser "input"
     validateFiles  parser inputs = forM_ inputs $ \f -> readFile f >>= validateSource parser f
