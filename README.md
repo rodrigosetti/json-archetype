@@ -26,18 +26,26 @@ If no JSON filename is given, then reads from standard input.
 
 Take, for example, the following JSON archetype:
 
+    /**
+     * JSON archetype language is a superset of JSON, and can accept C-style
+     * comments (block or line) to help documenting your test.
+     */
     {
         "name": string,
-        "data(-.*)?": object,
         "version": 2,
-        "coordinates": [number, number, number],
-        "is_member": boolean,
-        "is_active": true,
+        "data(-.*)?": object, // this key is a regular expression
+        "is_member": boolean, // true or false (type restriction)
+        "is_active": true,    // only true (value restriction)
+        "coordinates": [number, number, number], // any array with three numbers
         "stream": array,
+
+        // example of validation of a more complex regular expression.
+        // the value of the key "ip" should be a well-formed IP.
         "server": { "ip": "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}",
                     "port": 8080,
                     "protocol": "http"},
-        "extra": any
+
+        "extra": any // accepts any value here. the key "extra" must exist.
     }
 
 It defines a structure a JSON must have in order to be valid. The JSON can be

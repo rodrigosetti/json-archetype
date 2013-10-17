@@ -1,10 +1,15 @@
 
+// a commment
 {
-    "foo": "bar",
+    "foo": "bar", // a comment in a line
     "bar": null,
     "baz": 10,
     "spam": [1, 2, 3, 4],
     "eggs": true,
+
+    /*
+     * A block comment
+     */
     "ham": { "a": "b",
              "c": 7.5,
              "d": ["x", "y", "z"] }

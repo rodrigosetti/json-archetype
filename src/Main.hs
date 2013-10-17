@@ -31,6 +31,7 @@ naturalOrFloat :: Parsec String u (Either Integer Double)
 reserved       :: String -> Parsec String u String
 stringLiteral  :: Parsec String u String
 symbol         :: String -> Parsec String u String
+whiteSpace     :: Parsec String u ()
 
 braces         = T.braces         lexer
 brackets       = T.brackets       lexer
@@ -41,6 +42,7 @@ naturalOrFloat = T.naturalOrFloat lexer
 reserved       = T.symbol         lexer
 stringLiteral  = T.stringLiteral  lexer
 symbol         = T.symbol         lexer
+whiteSpace     = T.whiteSpace     lexer
 
 -- | Basic JSON validator: parses a JSON and returns unit, so we're interested
 --   only in validation (i.e. whether or not the input is correct).
@@ -70,7 +72,7 @@ type ArchetypeParser = Parsec String () JSONValidator
 
 archetype :: ArchetypeParser
 archetype =
-    do spaces
+    do whiteSpace
        o <- object <|> typeObject
        eof
        return $ jsonDocument o
