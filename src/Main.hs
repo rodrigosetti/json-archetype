@@ -48,12 +48,12 @@ symbol         = T.symbol         lexer
 type JSONValidator = Parsec String () ()
 
 jsonValue :: JSONValidator
-jsonValue = jsonArray        <|>
-            jsonObject       <|>
-            void (reserved "true")  <|>
+jsonValue = jsonArray               <|>
+            jsonObject              <|>
+            void (reserved "true" ) <|>
             void (reserved "false") <|>
-            void (reserved "null")  <|>
-            void stringLiteral    <|>
+            void (reserved "null" ) <|>
+            void stringLiteral      <|>
             void naturalOrFloat
 
 jsonObject :: JSONValidator
@@ -132,14 +132,13 @@ string =
 
 list :: ArchetypeParser
 list =
-    do vals <- brackets (commaSep value)
-       return $ jsonList vals
+    brackets (commaSep value) >>= return . jsonList
   where
     jsonList = void . brackets . sequence_ . intersperse (void $ symbol ",")
 
 object :: ArchetypeParser
 object =
-    do pairs <- braces (commaSep parsePair)
+    do pairs <- braces $ commaSep parsePair
        return (void $ symbol "{" >> jsonPairs (M.fromList pairs))
   where
     parsePair = do k <- stringLiteral

@@ -20,3 +20,36 @@ _etc._), and regular expression (for strings and keys).
       -h           --help                Display help information
       -a FILENAME  --archetype=FILENAME  The JSON archetype file name
 
+If no JSON filename is given, then reads from standard input.
+
+## Example
+
+Take, for example, the following JSON archetype:
+
+    {
+        "name": string,
+        "age": number,
+        "version": 2,
+        "coordinates": [number, number, number],
+        "is_member": boolean,
+        "is_active": true,
+        "stream": array
+        "extra": object,
+        "server": { "host": "127.0.0.1",
+                    "port": 8080 }
+    }
+
+It defines a structure a JSON must have in order to be valid. The JSON can be
+validated with an exact value (_e.g._ "127.0.0.1"), or with a type constrain
+such as `string` or `number`.
+
+The order matters in arrays, but it doesn't in objects.
+
+## TODO
+
+ * Use regular expressions to match string values and object key names.
+ * Use optional postfix quantity qualifiers (`*`, `+`, `?`, `{n}`, `{n-m}`), to
+   represent items that can appear optionally, zero or more, one or more,
+   _etc._
+ * Use assignment syntax (`identifier = value`) to reuse data.
+
