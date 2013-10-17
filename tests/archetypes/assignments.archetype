@@ -1,0 +1,21 @@
+
+/**
+ * Assignments test
+ */
+
+foo = {"a": number, "b": number}
+
+hex = "[0-9A-F]+"
+
+two = 2
+
+l123 = [1, two, 3]
+
+{
+    "foos": [foo, foo],
+    "baz": l123,
+    "numbers": { "x": hex,
+                 "y": hex,
+                 "z": hex }
+}
+

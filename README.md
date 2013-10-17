@@ -30,20 +30,28 @@ Take, for example, the following JSON archetype:
      * JSON archetype language is a superset of JSON, and can accept C-style
      * comments (block or line) to help documenting your test.
      */
+
+    /* one case assign sub-structes to names, and use them later in the main
+       validation structure to reuse parts. This is also an example of a
+       non-trivial use of a regular expression to validate an IP address. */
+    ip_address =  "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}"
+    server = { "ip": ip_address,
+               "port": 8080,
+               "protocol": "http"}
+
     {
         "name": string,
         "version": 2,
-        "data(-.*)?": object, // this key is a regular expression
-        "is_member": boolean, // true or false (type restriction)
-        "is_active": true,    // only true (value restriction)
+        "data(-.*)?": object,  // this key is a regular expression
+        "is_member" : boolean, // true or false (type restriction)
+        "is_active" : true,    // only true (value restriction)
         "coordinates": [number, number, number], // any array with three numbers
         "stream": array,
 
-        // example of validation of a more complex regular expression.
-        // the value of the key "ip" should be a well-formed IP.
-        "server": { "ip": "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}",
-                    "port": 8080,
-                    "protocol": "http"},
+        // reusing pre-defined structures...
+        "prod_server" : server,
+        "stage_server": server,
+        "dev_server"  : server,
 
         "extra": any // accepts any value here. the key "extra" must exist.
     }
@@ -62,5 +70,4 @@ The order matters in arrays, but it doesn't in objects.
  * Use optional postfix quantity qualifiers (`*`, `+`, `?`, `{n}`, `{n-m}`), to
    represent items that can appear optionally, zero or more, one or more,
    _etc._
- * Use assignment syntax (`identifier = value`) to reuse data.
 

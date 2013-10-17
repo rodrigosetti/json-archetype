@@ -3,6 +3,7 @@ module Main where
 import Control.Monad
 import Data.Functor.Identity (Identity)
 import Data.List (intersperse)
+import qualified Data.Map as M
 import System.Console.GetOpt
 import System.Environment (getArgs, getProgName)
 import Text.Parsec hiding (string)
@@ -26,6 +27,7 @@ braces         :: Parsec String u a -> Parsec String u a
 brackets       :: Parsec String u a -> Parsec String u a
 commaSep       :: Parsec String u a -> Parsec String u [a]
 float          :: Parsec String u Double
+identifier     :: Parsec String u String
 integer        :: Parsec String u Integer
 naturalOrFloat :: Parsec String u (Either Integer Double)
 reserved       :: String -> Parsec String u String
@@ -37,6 +39,7 @@ braces         = T.braces         lexer
 brackets       = T.brackets       lexer
 commaSep       = T.commaSep       lexer
 float          = T.float          lexer
+identifier     = T.identifier     lexer
 integer        = T.integer        lexer
 naturalOrFloat = T.naturalOrFloat lexer
 reserved       = T.symbol         lexer
@@ -67,17 +70,29 @@ jsonArray :: JSONValidator
 jsonArray = void $ brackets $ commaSep jsonValue
 
 -- | The Archetype Parser parses archetype JSON (the augmented JSON) and returns
---   a JSON validator
-type ArchetypeParser = Parsec String () JSONValidator
+--   a JSON validator. The user state is a namespace, to keep track of defined
+--   identifiers and reuse structures.
+type ArchetypeParser = Parsec String Namespace JSONValidator
+
+-- | A namespace holds a mapping of identifier names and their JSON validators
+type Namespace = M.Map String JSONValidator
 
 archetype :: ArchetypeParser
 archetype =
     do whiteSpace
+       _ <- many assignment
        o <- object <|> typeObject
        eof
        return $ jsonDocument o
   where
     jsonDocument o = void $ spaces >> o >> eof
+
+assignment :: ArchetypeParser
+assignment = do n <- identifier
+                _ <- symbol "="
+                v <- value
+                modifyState $ M.insert n v
+                return $ return ()
 
 value :: ArchetypeParser
 value = object       <|>
@@ -92,7 +107,8 @@ value = object       <|>
         typeObject   <|>
         typeArray    <|>
         typeBoolean  <|>
-        typeAny
+        typeAny      <|>
+        name
 
 typeString :: ArchetypeParser
 typeString = try (reserved "string") >> return (void stringLiteral)
@@ -112,6 +128,13 @@ typeObject = try (reserved "object") >> return jsonObject
 
 typeAny :: ArchetypeParser
 typeAny = try (reserved "any") >> return jsonValue
+
+name :: ArchetypeParser
+name = do n <- identifier
+          namespace <- getState
+          case M.lookup n namespace of
+            Nothing -> unexpected n
+            Just v  -> return v
 
 word :: String -> ArchetypeParser
 word w = try (reserved w) >> return (void $ reserved w)
@@ -195,14 +218,14 @@ main =
        case maybeOptions of
         Nothing -> return ()
         Just (archetypeFile, inputs) -> do contents <- readFile archetypeFile
-                                           case parse archetype archetypeFile contents of
+                                           case runParser archetype M.empty archetypeFile contents of
                                              Left e -> print e
                                              Right p -> validateFiles p inputs
   where
     validateFiles  parser [] = getContents >>= validateSource parser "input"
     validateFiles  parser inputs = forM_ inputs $ \f -> readFile f >>= validateSource parser f
-    validateSource parser name contents = case parse parser name contents of
+    validateSource parser source contents = case parse parser source contents of
                                             Left e -> print e
-                                            Right _ -> putStrLn $ name ++ ": success"
+                                            Right _ -> putStrLn $ source ++ ": success"
 
 
