@@ -1,14 +1,15 @@
 module Main where
 
-import Control.Monad (void, liftM, when, forM_)
-import System.Environment (getArgs, getProgName)
+import Control.Monad
 import Data.Functor.Identity (Identity)
 import Data.List (intersperse)
 import Prelude hiding (null)
 import System.Console.GetOpt
+import System.Environment (getArgs, getProgName)
 import Text.Parsec hiding (string)
 import Text.Parsec.Language (javaStyle)
 import qualified Text.Parsec.Token as T
+import qualified Data.Map as M
 
 -- The JSON (Java style) lexer
 lexer :: T.GenTokenParser String u Identity
@@ -91,16 +92,24 @@ list =
 
 object :: ArchetypeParser
 object =
-    do vals <- braces (commaSep parsePair)
-       return $ jsonObject vals
+    do pairs <- braces (commaSep parsePair)
+       return $ jsonObject $ M.fromList pairs
   where
     parsePair = do k <- stringLiteral
                    _ <- symbol ":"
                    v <- value
-                   return $ do k'<- stringLiteral
-                               if k' /= k then unexpected (show k) <?> show k'
-                                else void (symbol ":" >> v)
-    jsonObject = void . braces . sequence_ . intersperse (void $ symbol ",")
+                   return (k, v)
+    jsonObject pairs = symbol "{" >> jsonPairs pairs
+    jsonPairs pairs
+        | M.null pairs = void $ symbol "}"
+        | otherwise = do k <- stringLiteral
+                         case M.lookup k pairs of
+                            Nothing -> unexpected k
+                            Just p -> do _ <- symbol ":"
+                                         _ <- p
+                                         let pairs' = M.delete k pairs
+                                         unless (M.null pairs') $ void $ symbol ","
+                                         jsonPairs pairs'
 
 -- | The command line option type
 data CmdOption = OptHelp | OptArchetypeFile FilePath
