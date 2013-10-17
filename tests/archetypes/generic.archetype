@@ -1,0 +1,12 @@
+
+{
+    "foo": string,
+    "bar": null,
+    "baz": number,
+    "spam": [number, number, number, 4],
+    "eggs": boolean,
+    "ham": object,
+    "spices": { "a": array,
+                "b": any }
+}
+

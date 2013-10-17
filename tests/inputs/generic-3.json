@@ -1,0 +1,14 @@
+
+{
+    "foo": "",
+    "bar": null,
+    "baz": 0,
+    "spam": [1, 2, 1, 4],
+    "eggs": false,
+    "ham": {},
+    "spices": { "a": ["x", "y", "z"],
+                "b": null}
+}
+
+
+

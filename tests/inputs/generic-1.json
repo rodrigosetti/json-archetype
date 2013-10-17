@@ -1,0 +1,14 @@
+
+{
+    "foo": "sdjhasdjah",
+    "bar": null,
+    "baz": 1212,
+    "spam": [5, 7, 31, 4],
+    "eggs": false,
+    "ham": { "x": "b",
+             "xx": 7.5,
+              "xxx": ["x", "y", "z"] },
+    "spices": { "a": [],
+                "b": "bbbb" }
+}
+
