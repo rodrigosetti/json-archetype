@@ -28,26 +28,29 @@ Take, for example, the following JSON archetype:
 
     {
         "name": string,
-        "age": number,
+        "data(-.*)?": object,
         "version": 2,
         "coordinates": [number, number, number],
         "is_member": boolean,
         "is_active": true,
-        "stream": array
-        "extra": object,
-        "server": { "host": "127.0.0.1",
-                    "port": 8080 }
+        "stream": array,
+        "server": { "ip": "[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}\\.[0-9]{1,3}",
+                    "port": 8080,
+                    "protocol": "http"},
+        "extra": any
     }
 
 It defines a structure a JSON must have in order to be valid. The JSON can be
-validated with an exact value (_e.g._ "127.0.0.1"), or with a type constrain
-such as `string` or `number`.
+validated with an exact value (_e.g._ "http"), or with a type constrain such as
+`string` or `number`, or even regular expressions (in string literals or object
+key identifiers). Actually every string and key matching is a regular
+expression matching, so please be mindful of special characters and proper
+escaping.
 
 The order matters in arrays, but it doesn't in objects.
 
 ## TODO
 
- * Use regular expressions to match string values and object key names.
  * Use optional postfix quantity qualifiers (`*`, `+`, `?`, `{n}`, `{n-m}`), to
    represent items that can appear optionally, zero or more, one or more,
    _etc._

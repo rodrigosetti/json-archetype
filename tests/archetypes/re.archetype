@@ -1,0 +1,8 @@
+
+{
+    "breakfast": "(ham|eggs|pancakes)",
+    "hex": "[0-9A-F]+",
+    "goo*gle": number,
+    ".+" : "any key"
+}
+

@@ -3,13 +3,12 @@ module Main where
 import Control.Monad
 import Data.Functor.Identity (Identity)
 import Data.List (intersperse)
-import Prelude hiding (null)
 import System.Console.GetOpt
 import System.Environment (getArgs, getProgName)
 import Text.Parsec hiding (string)
 import Text.Parsec.Language (javaStyle)
+import Text.Regex.Posix
 import qualified Text.Parsec.Token as T
-import qualified Data.Map as M
 
 -- The JSON (Java style) lexer
 lexer :: T.GenTokenParser String u Identity
@@ -128,32 +127,45 @@ string =
     liftM jsonString stringLiteral
   where
     jsonString s = do s' <- stringLiteral
-                      when (s /= s') (unexpected (show s) <?> show s')
+                      unless (s' =~ wrapRe s) (unexpected (show s') <?> show s)
 
 list :: ArchetypeParser
 list =
-    brackets (commaSep value) >>= return . jsonList
+    liftM jsonList $ brackets $ commaSep value
   where
     jsonList = void . brackets . sequence_ . intersperse (void $ symbol ",")
+
+reLookup :: String -> [(String, a)] -> Maybe a
+reLookup _ [] = Nothing
+reLookup x ((re, a):ys) = if x =~ re then Just a else reLookup x ys
+
+reDelete :: String -> [(String, a)] -> [(String, a)]
+reDelete _ [] = []
+reDelete x ((y, a):ys)
+    | x =~ y    = ys
+    | otherwise = (y, a) : reDelete x ys
+
+wrapRe :: String -> String
+wrapRe s = "^" ++ s ++ "$"
 
 object :: ArchetypeParser
 object =
     do pairs <- braces $ commaSep parsePair
-       return (void $ symbol "{" >> jsonPairs (M.fromList pairs))
+       return (void $ symbol "{" >> jsonPairs pairs)
   where
     parsePair = do k <- stringLiteral
                    _ <- symbol ":"
                    v <- value
-                   return (k, v)
+                   return (wrapRe k, v)
     jsonPairs pairs
-        | M.null pairs = void $ symbol "}"
+        | null pairs = void $ symbol "}"
         | otherwise = do k <- stringLiteral
-                         case M.lookup k pairs of
+                         case reLookup k pairs of
                             Nothing -> unexpected k
                             Just p -> do _ <- symbol ":"
                                          _ <- p
-                                         let pairs' = M.delete k pairs
-                                         unless (M.null pairs') $ void $ symbol ","
+                                         let pairs' = reDelete k pairs
+                                         unless (null pairs') $ void $ symbol ","
                                          jsonPairs pairs'
 
 -- | The command line option type
