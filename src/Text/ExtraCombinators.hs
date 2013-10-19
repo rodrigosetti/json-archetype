@@ -1,9 +1,12 @@
-module Combinators (quantified,
-                    sepByN,
-                    parseQuantifier,
-                    continueIfSeparated,
-                    quantifier,
-                    quantifiedList) where
+module Text.ExtraCombinators where
+
+{- | Extra parser combinators that are used by this project.
+ -
+ - * Several JSON style tokenizers (such as symbol, integer, etc.)
+ - * Some functions to parse and handle quantifiers (zero-or-more, one-or-more,
+ -   etc.)
+ - * Some extra helper parser combinators.
+ -}
 
 import Control.Monad
 import Data.Functor.Identity (Identity)
@@ -13,7 +16,41 @@ import qualified Text.Parsec.Token as T
 
 -- The JSON (Java style) lexer
 lexer :: T.GenTokenParser String u Identity
-lexer = T.makeTokenParser javaStyle
+lexer = T.makeTokenParser javaStyle { T.reservedNames = ["string",
+                                                         "number",
+                                                         "object",
+                                                         "array",
+                                                         "boolean",
+                                                         "any",
+                                                         "true",
+                                                         "false",
+                                                         "null"] }
+
+braces         :: Parsec String u a -> Parsec String u a
+brackets       :: Parsec String u a -> Parsec String u a
+commaSep       :: Parsec String u a -> Parsec String u [a]
+float          :: Parsec String u Double
+identifier     :: Parsec String u String
+integer        :: Parsec String u Integer
+natural        :: Parsec String u Integer
+naturalOrFloat :: Parsec String u (Either Integer Double)
+reserved       :: String -> Parsec String u String
+stringLiteral  :: Parsec String u String
+symbol         :: String -> Parsec String u String
+whiteSpace     :: Parsec String u ()
+
+braces         = T.braces         lexer
+brackets       = T.brackets       lexer
+commaSep       = T.commaSep       lexer
+float          = T.float          lexer
+identifier     = T.identifier     lexer
+integer        = T.integer        lexer
+natural        = T.natural        lexer
+naturalOrFloat = T.naturalOrFloat lexer
+reserved       = T.symbol         lexer
+stringLiteral  = T.stringLiteral  lexer
+symbol         = T.symbol         lexer
+whiteSpace     = T.whiteSpace     lexer
 
 data Quantified a = Once a | Optional a | OneOrMore a | ZeroOrMore a | Range Int Int a deriving Show
 
@@ -30,18 +67,18 @@ quantifier :: ParsecT String u Identity (a -> Quantified a)
 quantifier =
     option Once $ optionalQ <|> zeroOrMore <|> oneOrMore <|> range
   where
-    optionalQ  = T.symbol lexer "?" >> return Optional
-    zeroOrMore = T.symbol lexer "*" >> return ZeroOrMore
-    oneOrMore  = T.symbol lexer "+" >> return OneOrMore
-    range = T.braces lexer $ do n <- T.natural lexer
-                                let n' = fromIntegral n
-                                maybeComma <- optionMaybe $ T.symbol lexer ","
-                                case maybeComma of
-                                 Nothing -> return $ Range n' n'
-                                 Just _ -> do m <- T.natural lexer
-                                              let m' = fromIntegral m
-                                              when (n > m) (unexpected "n > m in {n,m} quantifier")
-                                              return $ Range n' m'
+    optionalQ  = symbol "?" >> return Optional
+    zeroOrMore = symbol "*" >> return ZeroOrMore
+    oneOrMore  = symbol "+" >> return OneOrMore
+    range = braces $ do n <- natural
+                        let n' = fromIntegral n
+                        maybeComma <- optionMaybe $ symbol ","
+                        case maybeComma of
+                         Nothing -> return $ Range n' n'
+                         Just _ -> do m <- natural
+                                      let m' = fromIntegral m
+                                      when (n > m) (unexpected "n > m in {n,m} quantifier")
+                                      return $ Range n' m'
 
 -- | Parse the encapsulated parser in a quantifier, and return a transformed
 --   quantifier or Nothing if the quantifier is consumed
@@ -91,17 +128,21 @@ quantifiedList :: Stream s m t => ParsecT s u m b ->
                                   [Quantified (ParsecT s u m a)] ->
                                   ParsecT s u m [a]
 quantifiedList _   []                  = return []
+
 quantifiedList sep (Once p:ps) =
     do x <- p
        liftM (x:) $ continueIfSeparated sep ps $ quantifiedList sep ps
+
 quantifiedList sep (OneOrMore p:ps) =
     do x <- p
        continueIfSeparated sep ps $ liftM (x:) $ quantifiedList sep (ZeroOrMore p:ps)
+
 quantifiedList sep (Optional p:ps) =
     do maybeR <- optionMaybe p
        case maybeR of
         Nothing -> quantifiedList sep ps
         Just x  -> liftM (x:) $ continueIfSeparated sep ps $ quantifiedList sep ps
+
 quantifiedList sep (ZeroOrMore p:ps) =
     do maybeR <- optionMaybe p
        case maybeR of

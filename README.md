@@ -1,30 +1,28 @@
 # JSON Archetype
 
-A JSON test helper tool. It compares the so called "JSON archetype", which is a
-superset of JSON language, with one or more JSON files and output expected
-structure.
+JSON Archetype is a language designed for testing JSON documents. It validates
+an expected archetype agains one or more JSON documents.
 
-The archetype is a specification of the expected JSON format. It can be an
-strict definition of a JSON, but in a lot of cases it's desired to have some
-generality, _e. g._ a "number" (with any value), or "boolean", or structured
-values such as lists (with any values), _etc._
+This project can be thought of a "XSD" or "DTD" for JSON.
 
-For these scenarios, the archetype is an augmented JSON where one can specify
-exactly matching, type matching (through type keywords, such as "number",
-"object", _etc._), quantity qualifiers (optional, zero or more, one or more,
-_etc._), and regular expression (for strings and keys).
+## Motivation
 
-## Usage:
+In several test scenarios (specially in API testing) one desires to compare the
+"expected" JSON with the "actual" output from the code. By comparing the two
+JSON structures the test can tell if they differ or not, but it's a rigid
+approach since - without a supporting testing code - one cannot allow sensible
+variations in the actual JSON (such as values that we don't care, arrays that
+can have a varying number of elements, _etc._)
 
-    json-test <options> [file [file ...]]
-      -h           --help                Display help information
-      -a FILENAME  --archetype=FILENAME  The JSON archetype file name
+This language allows the definition of an "archetype", which is a JSON with the
+addition of generic invariant specifications, such as quantity qualifiers,
+regular expressions and type (not value) constrains.
 
-If no JSON filename is given, then reads from standard input.
+Please read the example to have a sense of how this works.
 
 ## Example
 
-Take, for example, the following JSON archetype:
+Take, for instance, the following JSON archetype:
 
     /**
      * JSON archetype language is a superset of JSON, and can accept C-style
@@ -57,10 +55,10 @@ Take, for example, the following JSON archetype:
         "extra": any // accepts any value here. the key "extra" must exist.
     }
 
-It defines a structure a JSON must have in order to be valid. The JSON can be
-validated with an exact value (_e.g._ "http"), or with a type constrain such as
-`string` or `number`, or even regular expressions (in string literals or object
-key identifiers). Actually every string and key matching is a regular
+It defines a structure a JSON must have in order to be valid. The values can be
+validated against an exact value (_e.g._ "http"), or with a type constrain such
+as `string` or `number`, or even regular expressions (in string literals or
+object key identifiers). Actually every string and key matching is a regular
 expression matching, so please be mindful of special characters and proper
 escaping.
 
@@ -87,7 +85,7 @@ that order matters in arrays, but it doesn't in objects):
         "state": ["spam", "eggs", 1, 2, 3]
     }
 
-## SYNTAX
+## Syntax
 
 On top of normal JSON syntax, one can use "type qualifiers", anywhere a JSON
 value could be, to identify that a value must be of a specific type: `object`,
@@ -99,4 +97,21 @@ key literals to specify that the given array value or object key/value pair
 should occur a certain number of times. They have the same syntax as their
 POSIX regular expressions counterparts: `?` (optional), `*` (zero or more), `+`
 (one or more), `{n}` (n repetitions), or `{n,m}` (n to m repetitions).
+
+## Installation and usage
+
+To compile and install, please first install [Haskell](http://www.haskell.org)
+for your platform.
+
+Following that, run `cabal install` ([Cabal](http://www.haskell.org/cabal/) is
+Haskell package manager, see `cabal help` for other options) to compile and
+install the binary.
+
+Finally, you can run the validator:
+
+    json-test <options> [file [file ...]]
+      -h           --help                Display help information
+      -a FILENAME  --archetype=FILENAME  The JSON archetype file name
+
+If no JSON filename is given, then reads from standard input.
 
