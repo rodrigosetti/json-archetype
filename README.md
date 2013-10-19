@@ -90,7 +90,7 @@ that order matters in arrays, but it doesn't in objects):
 ## SYNTAX
 
 On top of normal JSON syntax, one can use "type qualifiers", anywhere a JSON
-value could be, to identify that a value must be of a specific type: `object``,
+value could be, to identify that a value must be of a specific type: `object`,
 `list`, `string`, `number`, `boolean`, or `any` (`null` is a type and a value
 itself).
 
