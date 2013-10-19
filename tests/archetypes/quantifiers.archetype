@@ -1,0 +1,12 @@
+
+foolist = [1?, 2, 3{3}, 4*]
+barlist = ["x"{3,5}, "y"+, "z"]
+
+{
+    "foo(-[0-9]+)?" {3}: foolist,
+
+    "bar(-[0-9]+)?" +: barlist,
+
+    "complex(-[0-9]+)?" *: [{"x": number}*, string+, foolist{1,4}, 7*]
+}
+

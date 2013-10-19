@@ -13,17 +13,18 @@ server = { "ip": ip_address,
 
 {
     "name": string,
-    "version": 2,
-    "data(-.*)?": object,  // this key is a regular expression
-    "is_member" : boolean, // true or false (type restriction)
-    "is_active" : true,    // only true (value restriction)
-    "coordinates": ["geo", number, number, number], // any array with "geo" and 3 numbers
-    "stream": array,
+    "version" ?: 2,          // this key is optional (?)
+    "data(-.*)?" *: object,  // this key is a regular expression, and may
+                             // appear zero or more times
+    "is_member"   : boolean, // true or false (type restriction)
+    "is_active"   : true,    // only true (value restriction)
+    "coordinates" : ["geo", number{3}], // any array with "geo" and 3 numbers
+    "stream": [number*],     // a stream is an array of zero or more numbers
 
-    // reusing pre-defined structures...
-    "prod_server" : server,
-    "stage_server": server,
-    "dev_server"  : server,
+    // reusing pre-defined structures. This key should appear three times:
+    "[a-z]+_server" {3}: server,
+
+    "state" : [string{2,3}, number+], // 2-3 strings and one or more numbers
 
     "extra": any // accepts any value here. the key "extra" must exist.
 }

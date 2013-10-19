@@ -11,7 +11,10 @@
     "prod_server"  : {"ip": "192.178.1.1", "port": 8080, "protocol": "http"},
 
     "data-color": {"red": 10, "green": 20, "blue": 6},
+    "data-font": {"family": "Lucida", "size": 10, "unit": "pt"},
+
     "extra": {"foo": "bar",
-              "bar": null}
+              "bar": null},
+    "state": ["spam", "eggs", 1, 2, 3]
 }
 

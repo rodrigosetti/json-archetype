@@ -1,14 +1,14 @@
 module Main where
 
+import Combinators
 import Control.Monad
 import Data.Functor.Identity (Identity)
-import Data.List (intersperse)
-import qualified Data.Map as M
 import System.Console.GetOpt
 import System.Environment (getArgs, getProgName)
 import Text.Parsec hiding (string)
 import Text.Parsec.Language (javaStyle)
 import Text.Regex.Posix
+import qualified Data.Map as M
 import qualified Text.Parsec.Token as T
 
 -- The JSON (Java style) lexer
@@ -29,6 +29,7 @@ commaSep       :: Parsec String u a -> Parsec String u [a]
 float          :: Parsec String u Double
 identifier     :: Parsec String u String
 integer        :: Parsec String u Integer
+natural        :: Parsec String u Integer
 naturalOrFloat :: Parsec String u (Either Integer Double)
 reserved       :: String -> Parsec String u String
 stringLiteral  :: Parsec String u String
@@ -41,6 +42,7 @@ commaSep       = T.commaSep       lexer
 float          = T.float          lexer
 identifier     = T.identifier     lexer
 integer        = T.integer        lexer
+natural        = T.natural        lexer
 naturalOrFloat = T.naturalOrFloat lexer
 reserved       = T.symbol         lexer
 stringLiteral  = T.stringLiteral  lexer
@@ -69,15 +71,15 @@ jsonObject =
 jsonArray :: JSONValidator
 jsonArray = void $ brackets $ commaSep jsonValue
 
--- | The Archetype Parser parses archetype JSON (the augmented JSON) and returns
---   a JSON validator. The user state is a namespace, to keep track of defined
---   identifiers and reuse structures.
-type ArchetypeParser = Parsec String Namespace JSONValidator
+-- | The Archetype Parser parses archetype JSON (the augmented JSON).
+--   The user state is a namespace, to keep track of defined  identifiers
+--   and reuse structures.
+type ArchetypeParser a = Parsec String Namespace a
 
 -- | A namespace holds a mapping of identifier names and their JSON validators
 type Namespace = M.Map String JSONValidator
 
-archetype :: ArchetypeParser
+archetype :: ArchetypeParser JSONValidator
 archetype =
     do whiteSpace
        _ <- many assignment
@@ -87,14 +89,14 @@ archetype =
   where
     jsonDocument o = void $ spaces >> o >> eof
 
-assignment :: ArchetypeParser
+assignment :: ArchetypeParser JSONValidator
 assignment = do n <- identifier
                 _ <- symbol "="
                 v <- value
                 modifyState $ M.insert n v
                 return $ return ()
 
-value :: ArchetypeParser
+value :: ArchetypeParser JSONValidator
 value = object       <|>
         list         <|>
         string       <|>
@@ -110,55 +112,55 @@ value = object       <|>
         typeAny      <|>
         name
 
-typeString :: ArchetypeParser
+typeString :: ArchetypeParser JSONValidator
 typeString = try (reserved "string") >> return (void stringLiteral)
 
-typeNumber :: ArchetypeParser
+typeNumber :: ArchetypeParser JSONValidator
 typeNumber = try (reserved "number") >> return (void naturalOrFloat)
 
-typeBoolean :: ArchetypeParser
+typeBoolean :: ArchetypeParser JSONValidator
 typeBoolean = try (reserved "boolean") >>
               return (void $ reserved "true" <|> reserved "false")
 
-typeArray :: ArchetypeParser
+typeArray :: ArchetypeParser JSONValidator
 typeArray = try (reserved "array") >> return jsonArray
 
-typeObject :: ArchetypeParser
+typeObject :: ArchetypeParser JSONValidator
 typeObject = try (reserved "object") >> return jsonObject
 
-typeAny :: ArchetypeParser
+typeAny :: ArchetypeParser JSONValidator
 typeAny = try (reserved "any") >> return jsonValue
 
-name :: ArchetypeParser
+name :: ArchetypeParser JSONValidator
 name = do n <- identifier
           namespace <- getState
           case M.lookup n namespace of
             Nothing -> unexpected n
             Just v  -> return v
 
-word :: String -> ArchetypeParser
+word :: String -> ArchetypeParser JSONValidator
 word w = try (reserved w) >> return (void $ reserved w)
 
-number :: ArchetypeParser
+number :: ArchetypeParser JSONValidator
 number =
     liftM jsonNumber naturalOrFloat
   where
-    jsonNumber (Left i) = do i' <- integer
-                             when (i /= i') (unexpected (show i) <?> show i')
-    jsonNumber (Right f) = do f' <- float
-                              when (f /= f') (unexpected (show f) <?> show f')
-string :: ArchetypeParser
+    jsonNumber (Left  i) = try $ do i' <- integer
+                                    when (i /= i') (unexpected (show i') <?> show i)
+    jsonNumber (Right f) = try $ do f' <- float
+                                    when (f /= f') (unexpected (show f') <?> show f)
+string :: ArchetypeParser JSONValidator
 string =
     liftM jsonString stringLiteral
   where
-    jsonString s = do s' <- stringLiteral
-                      unless (s' =~ wrapRe s) (unexpected (show s') <?> show s)
+    jsonString s = try $ do s' <- stringLiteral
+                            unless (s' =~ wrapRe s) (unexpected (show s') <?> show s)
 
-list :: ArchetypeParser
+list :: ArchetypeParser JSONValidator
 list =
-    liftM jsonList $ brackets $ commaSep value
+    liftM jsonList $ brackets $ commaSep $ quantified value
   where
-    jsonList = void . brackets . sequence_ . intersperse (void $ symbol ",")
+    jsonList = void . brackets . quantifiedList (symbol ",")
 
 reLookup :: String -> [(String, a)] -> Maybe a
 reLookup _ [] = Nothing
@@ -170,28 +172,40 @@ reDelete x ((y, a):ys)
     | x =~ y    = ys
     | otherwise = (y, a) : reDelete x ys
 
+reReplace :: String -> a -> [(String, a)] -> [(String, a)]
+reReplace _ _ [] = []
+reReplace x b ((y, a):ys)
+    | x =~ y    = (y, b):ys
+    | otherwise = (y, a) : reReplace x b ys
+
 wrapRe :: String -> String
 wrapRe s = "^" ++ s ++ "$"
 
-object :: ArchetypeParser
+object :: ArchetypeParser JSONValidator
 object =
     do pairs <- braces $ commaSep parsePair
        return (void $ symbol "{" >> jsonPairs pairs)
   where
     parsePair = do k <- stringLiteral
+                   q <- quantifier
                    _ <- symbol ":"
                    v <- value
-                   return (wrapRe k, v)
+                   return (wrapRe k, q v)
     jsonPairs pairs
-        | null pairs = void $ symbol "}"
+        | null pairs = symbol "}" >> return []
         | otherwise = do k <- stringLiteral
                          case reLookup k pairs of
                             Nothing -> unexpected k
-                            Just p -> do _ <- symbol ":"
-                                         _ <- p
-                                         let pairs' = reDelete k pairs
-                                         unless (null pairs') $ void $ symbol ","
-                                         jsonPairs pairs'
+                            Just q -> do _ <- symbol ":"
+                                         (x, maybeQ) <- parseQuantifier q
+                                         let pairs' = maybe (reDelete k pairs)
+                                                            (\q'-> reReplace k q' pairs)
+                                                            maybeQ
+                                         let values = map snd pairs'
+                                         xs <- continueIfSeparated (symbol ",") values $
+                                                liftM (x:) $ jsonPairs pairs'
+                                         when (null xs) $ void $ symbol "}"
+                                         return xs
 
 -- | The command line option type
 data CmdOption = OptHelp | OptArchetypeFile FilePath
