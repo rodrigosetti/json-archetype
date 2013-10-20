@@ -19,10 +19,9 @@ main =
        let (options, inputFiles, errors) = getOpt Permute optDescriptions args
        mapM_ putStrLn errors
        case options of
-        (OptArchetypeFile f:_) -> do contents <- readFile f
-                                     case runParser archetype M.empty f contents of
-                                       Left e -> print e
-                                       Right p -> validateFiles p inputFiles
+        (OptArchetypeFile f:_) -> readFile f >>=
+                                  either print (flip validateFiles inputFiles) .
+                                  (runParser archetype M.empty f)
         _ -> do progName <- getProgName
                 putStrLn $ usageInfo ("Usage: " ++ progName ++ " <options> [file [file ...]]") optDescriptions
   where

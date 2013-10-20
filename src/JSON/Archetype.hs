@@ -26,13 +26,10 @@ type Namespace = M.Map String JSONValidator
 
 -- The archetype JSON document parser: returns a JSON validator
 archetype :: ArchetypeParser JSONValidator
-archetype =
-    do whiteSpace
-       o <- many assignment >> (object <|> typeObject)
-       eof
-       return $ jsonDocument o
-  where
-    jsonDocument o = spaces >> o >> eof
+archetype = do whiteSpace
+               o <- many assignment >> (object <|> typeObject)
+               eof
+               return (spaces >> o >> eof)
 
 assignment :: ArchetypeParser JSONValidator
 assignment = do n <- identifier
@@ -42,7 +39,7 @@ assignment = do n <- identifier
 
 value :: ArchetypeParser JSONValidator
 value = object       <|>
-        list         <|>
+        array        <|>
         string       <|>
         number       <|>
         word "true"  <|>
@@ -55,33 +52,22 @@ value = object       <|>
         typeBoolean  <|>
         typeAny      <|>
         name
-
-typeString :: ArchetypeParser JSONValidator
-typeString = try (reserved "string") >> return (void stringLiteral)
-
-typeNumber :: ArchetypeParser JSONValidator
-typeNumber = try (reserved "number") >> return (void naturalOrFloat)
-
-typeBoolean :: ArchetypeParser JSONValidator
-typeBoolean = try (reserved "boolean") >>
-              return (void $ reserved "true" <|> reserved "false")
-
-typeArray :: ArchetypeParser JSONValidator
-typeArray = try (reserved "array") >> return jsonArray
+  where
+    typeAny     = try (reserved "any") >> return jsonValue
+    typeBoolean = try (reserved "boolean") >>
+                  return (void $ reserved "true" <|> reserved "false")
+    typeArray   = try (reserved "array") >> return jsonArray
+    typeNumber  = try (reserved "number") >> return (void naturalOrFloat)
+    typeString  = try (reserved "string") >> return (void stringLiteral)
+    word w      = try (reserved w) >> return (void $ reserved w)
 
 typeObject :: ArchetypeParser JSONValidator
 typeObject = try (reserved "object") >> return jsonObject
-
-typeAny :: ArchetypeParser JSONValidator
-typeAny = try (reserved "any") >> return jsonValue
 
 name :: ArchetypeParser JSONValidator
 name = do n <- identifier
           namespace <- getState
           maybe (unexpected n) return $ M.lookup n namespace
-
-word :: String -> ArchetypeParser JSONValidator
-word w = try (reserved w) >> return (void $ reserved w)
 
 number :: ArchetypeParser JSONValidator
 number =
@@ -100,36 +86,32 @@ string =
     jsonString s = try $ do s' <- stringLiteral
                             unless (s' =~ wrapRe s) (unexpected (show s') <?> show s)
 
--- | Parses an archetype list, handling the quantity qualifiers
-list :: ArchetypeParser JSONValidator
-list =
-    liftM jsonList $ brackets $ commaSep $ quantified value
+-- | Parses an archetype array, handling the quantity qualifiers
+array :: ArchetypeParser JSONValidator
+array =
+    liftM quantifiedArray $ brackets $ commaSep $ quantified value
   where
-    jsonList = void . brackets . quantifiedList (symbol ",")
+    quantifiedArray = void . brackets . quantifiedList (symbol ",")
 
 -- | Parses a JSON archetype object, handling the fact that key/values can be
 --   valid in any order, and the quantity qualifiers.
 object :: ArchetypeParser JSONValidator
 object =
-    do pairs <- braces $ commaSep parsePair
-       return (void $ symbol "{" >> jsonPairs pairs)
+    liftM (void . braces . jsonPairs) $ braces $ commaSep pair
   where
-    parsePair = do k <- stringLiteral
-                   q <- quantifier
-                   v <- symbol ":" >> value
-                   return (wrapRe k, q v)
-    jsonPairs pairs
-        | null pairs = symbol "}" >> return []
-        | otherwise = do k <- stringLiteral
+    pair = do k <- stringLiteral
+              q <- quantifier
+              v <- symbol ":" >> value
+              return (wrapRe k, q v)
+    jsonPairs []    = return []
+    jsonPairs pairs = do k <- stringLiteral
                          case R.lookup k pairs of
                             Nothing -> unexpected k
                             Just q -> do (x, maybeQ) <- symbol ":" >> parseQuantifier q
                                          let pairs' = maybe (R.delete k pairs)
                                                             (\q'-> R.replace k q' pairs)
                                                             maybeQ
-                                         let values = map snd pairs'
-                                         xs <- continueIfSeparated (symbol ",") values $
+                                             values = map snd pairs'
+                                         continueIfSeparated (symbol ",") values $
                                                 liftM (x:) $ jsonPairs pairs'
-                                         when (null xs) $ void $ symbol "}"
-                                         return xs
 
