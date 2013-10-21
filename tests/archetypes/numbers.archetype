@@ -1,0 +1,20 @@
+
+{
+    "number-1"  :  number,
+    "number-2"  :  number,
+    "number-3"  :  number,
+    "number-4"  :  number,
+    "number-5"  :  number,
+    "number-6"  :  0,
+    "number-7"  : -10,
+    "number-8"  :  10,
+    "number-9"  : -0,
+    "number-10" :  10.5,
+    "number-11" : -10.5,
+    "number-12" : -0.0,
+    "number-13" :  15.76E+7,
+    "number-14" :  15e+7,
+    "number-15" :  15e-7,
+    "number-16" : -15e-7,
+    "number-17" : -15.131887E-7
+}
