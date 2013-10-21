@@ -5,5 +5,6 @@ runhaskell       -isrc Main -a tests/archetypes/simple.archetype      tests/inpu
 runhaskell       -isrc Main -a tests/archetypes/generic.archetype     tests/inputs/generic*.json     && \
 runhaskell       -isrc Main -a tests/archetypes/re.archetype          tests/inputs/re*.json          && \
 runhaskell       -isrc Main -a tests/archetypes/assignments.archetype tests/inputs/assignments*.json && \
+runhaskell       -isrc Main -a tests/archetypes/numbers.archetype     tests/inputs/numbers*.json     && \
 runhaskell       -isrc Main -a tests/archetypes/quantifiers.archetype tests/inputs/quantifiers*.json
 

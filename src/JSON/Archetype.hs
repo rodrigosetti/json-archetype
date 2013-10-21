@@ -5,7 +5,7 @@ module JSON.Archetype (archetype) where
  -}
 
 import Control.Monad
-import JSON.Validator
+import Text.JSON.Parsec hiding (try, string)
 import Text.ExtraCombinators
 import Text.Parsec hiding (string)
 import Text.Regex.Posix
@@ -15,6 +15,11 @@ import qualified Text.RegexAssociationList as R
 -- | Helper function to wrap a string into a "full-match" regular expression
 wrapRe :: String -> String
 wrapRe s = "^" ++ s ++ "$"
+
+type JSONValidator = CharParser () ()
+
+sign:: Parsec String u Integer
+sign = option 1 $ symbol "-" >> return (-1)
 
 -- | The Archetype Parser parses archetype JSON (the augmented JSON).
 --   The user state is a namespace, to keep track of defined  identifiers
@@ -53,16 +58,15 @@ value = object       <|>
         typeAny      <|>
         name
   where
-    typeAny     = try (reserved "any") >> return jsonValue
-    typeBoolean = try (reserved "boolean") >>
-                  return (void $ reserved "true" <|> reserved "false")
-    typeArray   = try (reserved "array") >> return jsonArray
-    typeNumber  = try (reserved "number") >> return jsonNumber
-    typeString  = try (reserved "string") >> return (void stringLiteral)
+    typeAny     = try (reserved "any")     >> return (void p_value)
+    typeBoolean = try (reserved "boolean") >> return (void p_boolean)
+    typeArray   = try (reserved "array")   >> return (void p_array)
+    typeNumber  = try (reserved "number")  >> return (void p_number)
+    typeString  = try (reserved "string")  >> return (void p_string)
     word w      = try (reserved w) >> return (void $ reserved w)
 
 typeObject :: ArchetypeParser JSONValidator
-typeObject = try (reserved "object") >> return jsonObject
+typeObject = try (reserved "object") >> return (void p_object)
 
 name :: ArchetypeParser JSONValidator
 name = do n <- identifier
