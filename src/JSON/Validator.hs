@@ -1,4 +1,9 @@
-module JSON.Validator (JSONValidator, jsonValue, jsonObject, jsonArray) where
+module JSON.Validator (JSONValidator,
+                       jsonValue,
+                       sign,
+                       jsonObject,
+                       jsonArray,
+                       jsonNumber) where
 
 -- | Basic JSON validator: parses a JSON and returns unit, so we're interested
 --   only in validation (i.e. whether or not the input is correct).
@@ -16,7 +21,13 @@ jsonValue = jsonArray               <|>
             void (reserved "false") <|>
             void (reserved "null" ) <|>
             void stringLiteral      <|>
-            void naturalOrFloat
+            jsonNumber
+
+sign:: Parsec String u Integer
+sign = option 1 (symbol "-" >> return (-1))
+
+jsonNumber :: JSONValidator
+jsonNumber = sign >> void naturalOrFloat
 
 jsonObject :: JSONValidator
 jsonObject =

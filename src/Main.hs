@@ -20,8 +20,8 @@ main =
        mapM_ putStrLn errors
        case options of
         (OptArchetypeFile f:_) -> readFile f >>=
-                                  either print (flip validateFiles inputFiles) .
-                                  (runParser archetype M.empty f)
+                                  either print (`validateFiles` inputFiles) .
+                                  runParser archetype M.empty f
         _ -> do progName <- getProgName
                 putStrLn $ usageInfo ("Usage: " ++ progName ++ " <options> [file [file ...]]") optDescriptions
   where

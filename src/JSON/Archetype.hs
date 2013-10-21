@@ -57,7 +57,7 @@ value = object       <|>
     typeBoolean = try (reserved "boolean") >>
                   return (void $ reserved "true" <|> reserved "false")
     typeArray   = try (reserved "array") >> return jsonArray
-    typeNumber  = try (reserved "number") >> return (void naturalOrFloat)
+    typeNumber  = try (reserved "number") >> return jsonNumber
     typeString  = try (reserved "string") >> return (void stringLiteral)
     word w      = try (reserved w) >> return (void $ reserved w)
 
@@ -71,12 +71,19 @@ name = do n <- identifier
 
 number :: ArchetypeParser JSONValidator
 number =
-    liftM jsonNumber naturalOrFloat
+    liftM jsonNumberValue integerOrFloat
   where
-    jsonNumber (Left  i) = try $ do i' <- integer
-                                    when (i /= i') (unexpected (show i') <?> show i)
-    jsonNumber (Right f) = try $ do f' <- float
-                                    when (f /= f') (unexpected (show f') <?> show f)
+    integerOrFloat = do s <- sign
+                        r <- naturalOrFloat
+                        case r of
+                            Left i  -> return $ Left  $ i * s
+                            Right f -> return $ Right $ f * fromIntegral s
+    jsonNumberValue (Left  i) = try $ do i' <- integer
+                                         when (i /= i') (unexpected (show i') <?> show i)
+    jsonNumberValue (Right f) = try $ do s <- option 1 (symbol "-" >> return (-1))
+                                         f' <- float
+                                         let signed = f' * s
+                                         when (f /= signed) (unexpected (show signed) <?> show f)
 
 -- | Parses an archetype string, matching regular expression
 string :: ArchetypeParser JSONValidator
