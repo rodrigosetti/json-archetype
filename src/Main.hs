@@ -1,5 +1,6 @@
 module Main where
 
+import System.Exit
 import Control.Monad
 import Data.Version (showVersion)
 import JSON.Archetype
@@ -22,17 +23,21 @@ main =
        unless (null errors) $ forM_ errors putStrLn
        case options of
         (OptVersion:_)         -> putStrLn $ showVersion version
-        (OptArchetypeFile f:_) -> readFile f >>=
-                                  either print (`validateFiles` inputFiles) .
-                                  runParser archetype M.empty f
+        (OptArchetypeFile f:_) -> do a <- readFile f
+                                     case runParser archetype M.empty f a of
+                                      Left  e -> print e >> exitWith (ExitFailure 255)
+                                      Right p -> do c <- validateFiles p inputFiles
+                                                    if c == 0 then exitSuccess else exitWith (ExitFailure c)
         (OptHelp:_) -> do progName <- getProgName
                           putStrLn $ usageInfo ("Usage: " ++ progName ++ " <options> [file [file ...]]") optDescriptions
         _ -> return ()
   where
     validateFiles  parser [] = getContents >>= validateSource parser "input"
-    validateFiles  parser inputs = forM_ inputs $ \f -> readFile f >>= validateSource parser f
-    validateSource parser source contents = either print (const $ putStrLn $ source ++ ": valid") $
-                                                   parse parser source contents
+    validateFiles  parser inputs = do codes <- forM inputs $ \f -> readFile f >>= validateSource parser f
+                                      return $ sum codes
+    validateSource parser source contents = case parse parser source contents of
+                                             Left  e -> print e >> return 1
+                                             Right _ -> putStrLn (source ++ ": valid") >> return 0
     optDescriptions = [Option "h" ["help"] (NoArg OptHelp) "Display help information",
                        Option ""  ["version"] (NoArg OptVersion) "Display program version",
                        Option "a" ["archetype"] (ReqArg OptArchetypeFile "FILENAME") "The JSON archetype file name"]
