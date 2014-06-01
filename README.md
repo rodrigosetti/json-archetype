@@ -1,4 +1,4 @@
-# JSON Archetype
+# JSON Archetype [![Build Status](https://travis-ci.org/rodrigosetti/json-archetype.svg?branch=master)](https://travis-ci.org/rodrigosetti/json-archetype)
 
 JSON Archetype is a language designed for testing JSON documents. It validates
 an expected archetype agains one or more JSON documents.
