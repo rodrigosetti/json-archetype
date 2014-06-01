@@ -1,0 +1,5 @@
+
+language: haskell
+
+script: ./run-tests.sh
+
