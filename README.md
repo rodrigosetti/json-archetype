@@ -113,10 +113,12 @@ install the binary.
 
 Finally, you can run the validator:
 
-    json-test <options> [file [file ...]]
-      -h           --help                Display help information
-                   --version             Display program version
-      -a FILENAME  --archetype=FILENAME  The JSON archetype file name
+```console
+ json-test <options> [file [file ...]]
+   -h           --help                Display help information
+                --version             Display program version
+   -a FILENAME  --archetype=FILENAME  The JSON archetype file name
+```
 
 If no JSON filename is given, then reads from standard input.
 
@@ -130,7 +132,8 @@ For development, I recommend using `cabal sandbox` (see `cabal help sandbox`
 for details) to create a dependency environment (_i.e._ virtual environment) to
 install the dependencies and test, _e.g._, after cloning the project:
 
-    $ cabal sandbox init
-    $ cabal install --dependencies-only
-    $ ./run-tests.sh
-
+```console
+$ cabal sandbox init
+$ cabal install --dependencies-only
+$ ./run-tests.sh
+```
